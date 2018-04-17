@@ -1,0 +1,10 @@
+{
+  "generator-python-lib": {
+    "projectName": "nix",
+    "fullName": "snow",
+    "email": ".",
+    "gitlabName": ".",
+    "ciProvider": "None",
+    "version": "4.0.32"
+  }
+}
