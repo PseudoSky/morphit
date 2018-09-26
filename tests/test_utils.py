@@ -1,13 +1,13 @@
 """
-nix tests.
+morphit tests.
 """
 
 import unittest
-from nix.utils import Parser, ParserTemplate
-from datetime import datetime
+from morphit import Parser, Template
+from datetime import datetime, timezone
 class TestUtils(unittest.TestCase):
     """
-    Test nix's utils.
+    Test morphit's utils.
     """
 
     def setUp(self):
@@ -82,10 +82,31 @@ class TestUtils(unittest.TestCase):
       res = Parser([(9,9)], ([2.0, 9],))
       self.assertEqual(res ,[(2,9)] )
 
+    def test_float_to_str_cast(self):
+      res = Parser('', 6.4)
+      self.assertEqual(res , '6.4')
+
+    def test_int_to_str_cast(self):
+      res = Parser('', 6)
+      self.assertEqual(res , '6')
+
+    def test_bool_to_str_cast(self):
+      res = Parser('', True)
+      self.assertEqual(res , 'True')
+
+    def test_none_to_str_cast(self):
+      res = Parser('', None)
+      self.assertEqual(res , 'None')
+
+    def test_none_to_str_cast(self):
+      res = Parser('', None)
+      self.assertEqual(res , 'None')
+
+
     def test_none(self):
-      pt = ParserTemplate({
+      pt = Template({
         'amount': 0.66075377,
-        'datetime': ParserTemplate.types['Date'],
+        'datetime': Template.types['Date'],
         'fee': None,
         'id': None,
         'info': ['659.100000', '0.66075377', 1517364874.3597, 's', 'l', ''],
@@ -100,14 +121,13 @@ class TestUtils(unittest.TestCase):
       }
       self.assertEqual(pt.run(tmp), tmp)
 
-
     '''
     Test Date Parsing
     '''
 
     def test_string_float_ts(self):
       # Parse ms timestamp format (like from python)
-      pt = ParserTemplate(ParserTemplate.types['Date'])
+      pt = Template(Template.types['Date'])
       tmp ='1517408042.277897'
       self.assertEqual(datetime(2018, 1, 31, 6, 14, 2, 277897), pt.run(tmp))
       tmp ='1517408042'
@@ -115,31 +135,120 @@ class TestUtils(unittest.TestCase):
 
     def test_s_ts(self):
       # Parse ms timestamp format (like from python)
-      pt = ParserTemplate(ParserTemplate.types['Date'])
-      tmp =1517408042.277897
+      pt = Template(Template.types['Date'])
+      tmp = 1517408042.277897
       self.assertEqual(datetime(2018, 1, 31, 6, 14, 2, 277897), pt.run(tmp))
-      tmp =1517408042
+      tmp = 1517408042
       self.assertEqual(datetime(2018, 1, 31, 6, 14, 2), pt.run(tmp))
 
 
 
     def test_string_ms_ts(self):
       # Parse s timestamp format (like from python)
-      pt = ParserTemplate(ParserTemplate.types['Date'])
+      pt = Template(Template.types['Date'])
       tmp ='1517408265547'
       self.assertEqual(datetime(2018, 1, 31, 6, 17, 45, 547000), pt.run(tmp))
 
 
     def test_ms_ts(self):
       # Parse s timestamp format (like from python)
-      pt = ParserTemplate(ParserTemplate.types['Date'])
-      tmp =1517408265547
+      pt = Template(Template.types['Date'])
+      tmp = 1517408265547
       self.assertEqual(datetime(2018, 1, 31, 6, 17, 45, 547000), pt.run(tmp))
 
     def test_json_dump_datetime(self):
       # Test the json datetime encoder
-      pt = ParserTemplate(ParserTemplate.types['Date'])
+      pt = Template(Template.types['Date'])
       tmp = pt.run(1517408265547)
       self.assertEqual(datetime(2018, 1, 31, 6, 17, 45, 547000), tmp)
       res = Parser('', {'datetime': tmp})
       self.assertEqual('{"datetime": "2018-01-31T06:17:45.547"}', res)
+
+    def test_datetime_to_str(self):
+      # Test the json datetime encoder
+      res = Parser(str, datetime(2018, 1, 31, 6, 17, 45, 547000))
+      self.assertEqual("2018-01-31T06:17:45.547", res)
+
+    def test_str_to_datetime(self):
+      # Test the json datetime encoder
+      res = Parser(datetime(2018, 1, 31, 6, 17, 45, 547000), "2018-01-31T06:17:45.547")
+      self.assertEqual(datetime(2018, 1, 31, 6, 17, 45, 547000, tzinfo=timezone.utc), res)
+
+    def test_datetime_to_int_cast(self):
+      # Test the timestamp encoding a datetime to int
+      pt = Template(int)
+      tmp = pt.run(datetime(2018, 1, 31, 6, 17, 45, 547000))
+      self.assertEqual(1517408265547, tmp)
+
+    def test_datetime_to_float_cast(self):
+      # Test encoding a datetime to a float
+      pt = Template(float)
+      tmp = pt.run(datetime(2018, 1, 31, 6, 14, 2, 277897))
+      self.assertEqual(1517408042.277897, tmp)
+
+    def test_datetime_to_str_cast(self):
+      # Test encoding a datetime to a float
+      pt = Template(str)
+      tmp = pt.run(datetime(2018, 1, 31, 6, 17, 45, 547000))
+      self.assertEqual("2018-01-31T06:17:45.547", tmp)
+
+    def test_lambda_conversion(self):
+      # Executes the lambda passed in rather than using builtin
+      pt = Template(lambda x: int(x)*10)
+      self.assertEqual(10, pt.run('1'))
+
+    def test_function_conversion(self):
+      # Executes the function passed in rather than using builtin
+      def convert_multiply(var): return int(var)*10
+      pt = Template(convert_multiply)
+      self.assertEqual(10, pt.run('1'))
+
+    '''
+    Fancier nesting cases
+    '''
+
+    def test_flat_array(self):
+      tmp = [659.100000, '0.66075377', 1517364874.3597, 's', 'l', '']
+      test = ['659.100000', '', 1, 1]
+      res = Parser(tmp, test)
+      self.assertEqual(res, [659.100000, 0.0, 1.0, 1.0])
+
+    def test_deep_array(self):
+      tmp = [{ 'deep_bool': True, 'deep_float': 1.0 }]
+      test = ["{ 'deep_bool': true, 'deep_float': \"1.0\" }"]
+      res = Parser(tmp, test)
+      self.assertEqual(res[0]['deep_bool'], True)
+      self.assertEqual(res[0]['deep_float'], 1.0)
+      self.assertEqual(len(res), 1)
+      self.assertEqual(len(res[0].keys()), 2)
+
+    def test_nested_parser_template(self):
+      TickerModel = Template({
+        'amount': 0.66075377,
+        'datetime': Template.types['Date'],
+        'fee': None,
+        'id': None,
+        'info': ['659.100000', '0.66075377', 1517364874.3597, 's', 'l', ''],
+      })
+
+      TickerListTemplate = Template({
+        'tickers': [TickerModel],
+      })
+
+      tmp = {
+        'tickers': [
+          {
+            'amount': '0.66075377',
+            'datetime': '1517408042',
+            'fee': None,
+            'id': None,
+            'info': '[]',
+          }
+        ]
+      }
+      result = TickerListTemplate.run(tmp)
+      self.assertEqual(result['tickers'][0]['amount'], 0.66075377)
+      self.assertEqual(result['tickers'][0]['datetime'], datetime(2018, 1, 31, 6, 14, 2))
+      self.assertEqual(result['tickers'][0]['info'], [])
+      self.assertEqual(result['tickers'][0]['fee'], None)
+      self.assertEqual(len(result['tickers']), 1)

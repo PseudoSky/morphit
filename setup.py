@@ -5,6 +5,9 @@ Setup script.
 from distutils.core import Command
 from setuptools import setup
 
+def readme():
+    with open('README.rst') as f:
+        return f.read()
 
 class Coverage(Command):
     """
@@ -38,13 +41,21 @@ class Coverage(Command):
         cov.stop()
         cov.save()
         cov.report()
-        cov.html_report()
+        # cov.html_report()
 
 
 setup(
+    name='morphit',
+    description='makes shitty data more fit (a smarter serializer)',
     author='snow',
+    keywords='serialize data schema transform parse parser parsing',
+    classifiers=[
+        'Topic :: Software Development :: Libraries',
+        'Topic :: Utilities',
+        'Topic :: Text Editors :: Text Processing',
+        'Topic :: Text Processing'
+    ],
     author_email='.',
-    description='nix',
     download_url='',
     cmdclass={
         'coverage': Coverage,
@@ -53,10 +64,9 @@ setup(
       'multipledispatch>=0.4.9',
       'iso8601>=0.1.12'
     ],
-    license='Apache License (2.0)',
-    name='nix',
+    license='MIT',
     packages=[
-        'nix',
+        'morphit',
     ],
     scripts=[],
     test_suite='tests',
