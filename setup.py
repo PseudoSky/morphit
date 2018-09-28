@@ -5,9 +5,8 @@ Setup script.
 from distutils.core import Command
 from setuptools import setup
 
-def readme():
-    with open('README.rst') as f:
-        return f.read()
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 class Coverage(Command):
     """
@@ -47,7 +46,9 @@ class Coverage(Command):
 setup(
     name='morphit',
     description='makes shitty data more fit (a smarter serializer)',
-    author='snow',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    author='pseudosky',
     keywords='serialize data schema transform parse parser parsing',
     classifiers=[
         'Topic :: Software Development :: Libraries',
@@ -77,6 +78,6 @@ setup(
         'tox>=2.3.1,<3.0.0',
         'virtualenv>=15.0.1,<16.0.0'
     ],
-    url='',
+    url='https://github.com/PseudoSky/morphit',
     version='1.0.0'
 )
