@@ -56,7 +56,7 @@ setup(
         'Topic :: Text Editors :: Text Processing',
         'Topic :: Text Processing'
     ],
-    author_email='.',
+    author_email='grepthesky@gmail.com',
     download_url='',
     cmdclass={
         'coverage': Coverage,

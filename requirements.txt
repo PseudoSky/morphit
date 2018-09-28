@@ -1,2 +1,2 @@
-multipledispatch>=0.4.9
+multipledispatch>=0.6.0
 iso8601>=0.1.12
