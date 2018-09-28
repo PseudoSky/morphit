@@ -35,6 +35,7 @@ Features
 
 -   datetime serialization
 ```python
+	>>> from datetime import date
   >>> Parser(str, datetime(2018, 1, 31, 6, 17, 45, 547000))
   "2018-01-31T06:17:45.547"
 ```
@@ -116,18 +117,29 @@ Install: `python3 setup.py install`
 Development
 ------------
 ```sh
-    virtualenv --python=python3 venv
-    source ./venv/bin/activate
-    python setup.py easy_install
-    pip install -r requirements-dev.txt
+virtualenv --python=python3 venv
+source ./venv/bin/activate
+python setup.py easy_install
+pip install -r requirements-dev.txt
 ```
 
 Roadmap
 ------------
 
--   Add strict parameter that enables enforcement of keys and list/tuple length
--   Add default parameter that remplaces None or non existing values with a specified default
--   Add fallback parameter that accepts a value or a lambda function to replace the value
+- Custom exceptions for bad casting (int/list/tuple -> dict)
+- Add strict parameter that enables enforcement of keys and list/tuple length
+- Add default parameter that remplaces None or non existing values with a specified default
+- Add fallback parameter that accepts a value or a lambda function to replace the value
+
+BUGS
+-----------
+
+Should output float
+```python
+>>> Parser({'asdf':[1.0]}, {'asdf':1000})
+{'asdf': [1000]}
+```
+
 
 Contributing
 ------------
