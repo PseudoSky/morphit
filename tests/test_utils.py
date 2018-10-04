@@ -5,6 +5,7 @@ morphit tests.
 import unittest
 from morphit import Parser, Template
 from datetime import datetime, timezone
+
 class TestUtils(unittest.TestCase):
     """
     Test morphit's utils.

@@ -123,6 +123,11 @@ python setup.py easy_install
 pip install -r requirements-dev.txt
 ```
 
+```
+python3 setup.py sdist bdist_wheel
+twine upload dist/*
+```
+
 Roadmap
 ------------
 

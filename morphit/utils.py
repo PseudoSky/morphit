@@ -19,16 +19,14 @@ class JSONEncoder(json.JSONEncoder):
         return super(JSONEncoder, self).default(o)
 
 pattern = re.compile('[\W_]+')
-
 DateType = datetime.now()
 NoneType = type(None)
 
-
-class StaticDateType():
+class StaticDateType(object):
   def __init__(self):
     pass
 
-class Template():
+class Template(object):
   types = {
     'Date': DateType,
     'StaticDateType': StaticDateType,
