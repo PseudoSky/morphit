@@ -21,6 +21,15 @@ class TestUtils(unittest.TestCase):
             'that': bool,
         }
 
+    def test_case_float_string_to_int(self):
+        res = Parser(60, '150.0')
+        self.assertEqual(res, 150)
+        res = Parser(90, '0.0')
+        self.assertEqual(res, 0)
+        res = Parser(90, '.0')
+        self.assertEqual(res, 0)
+
+
     def test_simple_case_one(self):
         case = "[\"earthofficial\", \"blackandwhite\", \"worldshotz\"]"
         res = Parser([], case)
@@ -103,6 +112,14 @@ class TestUtils(unittest.TestCase):
       res = Parser('', None)
       self.assertEqual(res , 'None')
 
+    def test_currency_to_float_cast(self):
+      res = Parser(1.0, '$10,000.00')
+      self.assertEqual(res , 10000.00)
+
+    def test_currency_to_int_cast(self):
+      res = Parser(int, '$10,000.00')
+      self.assertEqual(res , 10000)
+
 
     def test_none(self):
       pt = Template({
@@ -110,6 +127,7 @@ class TestUtils(unittest.TestCase):
         'datetime': Template.types['Date'],
         'fee': None,
         'id': None,
+        'price': 10000.0,
         'info': ['659.100000', '0.66075377', 1517364874.3597, 's', 'l', ''],
       })
 
@@ -118,6 +136,7 @@ class TestUtils(unittest.TestCase):
         'datetime': '2018-01-31T02:14:34.359Z',
         'fee': None,
         'id': None,
+        'price': '$10,000.00',
         'info': ['659.100000', '0.66075377', 1517364874.3597, 's', 'l', ''],
       }
       self.assertEqual(pt.run(tmp), tmp)

@@ -79,5 +79,5 @@ setup(
         'virtualenv>=15.0.1,<16.0.0'
     ],
     url='https://github.com/PseudoSky/morphit',
-    version='1.0.1'
+    version='1.0.3'
 )

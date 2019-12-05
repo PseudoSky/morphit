@@ -56,7 +56,6 @@ def Parser(base, var, fallback=None):
     return Parser(fallback, var)
   return type(base)(var)
 
-
 @dispatch(str, datetime)
 def Parser(base, var, fallback=None):
   r = var.isoformat()
@@ -181,15 +180,27 @@ def Parser(base, var, fallback=None):
 def Parser(base, var, fallback=None):
   return type(base)(0)
 
-# OUTPUT: number
+#
+'''
+OUTPUT: number
+NOTE: type(base)(float(var))
+PURPOSE: Protect against the case below
+
+>>> Parser(60, '150.0') # fails on type(base)(var) == int(var)
+
+>>> int('150.0')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: invalid literal for int() with base 10: '150.0'
+'''
 @dispatch((float, int), str)
 def Parser(base, var, fallback=None):
   var = var.replace(' ','')
   try:
     if(var == ''): var = '0'
-    var = var.replace(' ','').replace(',','')
+    var = re.sub('[^0-9.-]', '', var) # Adds support for currency
     if(var.count('.')>1):var = var.replace('.','')
-    return type(base)(var)
+    return type(base)(float(var))
   except Exception as e:
     print(base, var, type(base))
     raise e

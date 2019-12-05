@@ -87,10 +87,12 @@ Supported Conversions
 -   str -> bool
 -   str -> datetime
 -   str -> dict
--   str -> float
--   str -> int
 -   str -> list
 -   str -> tuple
+-   str[int] -> float
+-   str[int] -> int
+-   str[float] -> float
+-   str[float] -> int
 -   str -> type
 -   str[iso8601] -> datetime
 -   str[iso8601] -> float
@@ -105,14 +107,31 @@ Supported Conversions
 Installation
 ------------
 
-Test:
+`pip3 install morphit`
 
-`python setup.py test`
+`sudo -H pip3 install morphit`
+
+Deploy
+------------
+
 
 Build: `python3 setup.py build`
-
+Test `python setup.py test`
 Install: `python3 setup.py install`
 
+
+Deploy
+------------
+
+* Run tests as outlined above
+* Make sure you bump the version
+* Check venv is active
+
+
+```
+python3 setup.py sdist bdist_wheel
+twine upload dist/*
+```
 
 Development
 ------------
@@ -121,11 +140,6 @@ virtualenv --python=python3 venv
 source ./venv/bin/activate
 python setup.py easy_install
 pip install -r requirements-dev.txt
-```
-
-```
-python3 setup.py sdist bdist_wheel
-twine upload dist/*
 ```
 
 Roadmap
