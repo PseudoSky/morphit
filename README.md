@@ -35,9 +35,9 @@ Features
 
 -   datetime serialization
 ```python
-	>>> from datetime import date
-  >>> Parser(str, datetime(2018, 1, 31, 6, 17, 45, 547000))
-  "2018-01-31T06:17:45.547"
+  	>>> from datetime import date
+    >>> Parser(str, datetime(2018, 1, 31, 6, 17, 45, 547000))
+    "2018-01-31T06:17:45.547"
 ```
 -   deep serialization of dicts
 -   supports custom serializers using methods/lambda functions
@@ -155,8 +155,8 @@ BUGS
 
 Should output float
 ```python
->>> Parser({'asdf':[1.0]}, {'asdf':1000})
-{'asdf': [1000]}
+    >>> Parser({'asdf':[1.0]}, {'asdf':1000})
+    {'asdf': [1000]}
 ```
 
 
