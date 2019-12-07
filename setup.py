@@ -40,7 +40,7 @@ class Coverage(Command):
         cov.stop()
         cov.save()
         cov.report()
-        # cov.html_report()
+        cov.html_report()
 
 
 setup(
@@ -79,5 +79,5 @@ setup(
         'virtualenv>=15.0.1,<16.0.0'
     ],
     url='https://github.com/PseudoSky/morphit',
-    version='1.0.3'
+    version='1.0.4'
 )

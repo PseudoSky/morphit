@@ -3,8 +3,8 @@ morphit tests.
 """
 
 import unittest
-from morphit import Parser, Template
-from datetime import datetime, timezone
+from morphit import Processor, Parser, Template
+from datetime import datetime, timezone, time
 
 class TestUtils(unittest.TestCase):
     """
@@ -20,6 +20,10 @@ class TestUtils(unittest.TestCase):
             'other':2.0,
             'that': bool,
         }
+
+    def test_processor(self):
+        p = Processor(int)
+        self.assertEqual(p('1.0'), 1)
 
     def test_case_float_string_to_int(self):
         res = Parser(60, '150.0')
@@ -49,6 +53,12 @@ class TestUtils(unittest.TestCase):
         case = "['photo', 2, 'pic', 'pics']"
         res = Parser(['strings'], case)
         self.assertEqual(res, ['photo', '2', 'pic', 'pics'])
+
+    def test_simple_case_five(self):
+        case = "photo"
+        res = Parser([], case)
+        self.assertEqual(res, ['photo'])
+
 
     def test_parse_nested_objects(self):
         res = Parser(self.template, "{u'dict':{u'check':u'yup'}, u'tojson':{u'check':u'yup'}, 'tupletojson':[9,9], u'this':u'2.0','other': '2', 'that':'False'}")
@@ -176,6 +186,31 @@ class TestUtils(unittest.TestCase):
       tmp = 1517408265547
       self.assertEqual(datetime(2018, 1, 31, 6, 17, 45, 547000), pt.run(tmp))
 
+    def test_datetime_to_float(self):
+      dt = datetime(2019, 12, 6, 20, 31, 59, 329921)
+      tmp = Parser(float, dt)
+      self.assertEqual(1575693119.329921, tmp)
+
+    def test_float_to_datetime(self):
+      dt = datetime(2019, 12, 6, 20, 31, 59, 329921)
+      tmp = Parser(dt, 1575693119.329921)
+      self.assertEqual(dt, tmp)
+
+    def test_datetime_to_int(self):
+      dt = datetime(2019, 12, 6, 20, 31, 59, 329000)
+      tmp = Parser(int, dt)
+      self.assertEqual(1575693119329, tmp)
+
+    def test_int_to_datetime(self):
+      dt = datetime(2019, 12, 6, 20, 31, 59, 329000)
+      tmp = Parser(dt, 1575693119329)
+      self.assertEqual(dt, tmp)
+
+    def test_dict_to_json(self):
+      # Test the json datetime encoder
+      res = Parser('', {'a': { 'b': 123456 }})
+      self.assertEqual('{"a": {"b": 123456}}', res)
+
     def test_json_dump_datetime(self):
       # Test the json datetime encoder
       pt = Template(Template.types['Date'])
@@ -184,10 +219,16 @@ class TestUtils(unittest.TestCase):
       res = Parser('', {'datetime': tmp})
       self.assertEqual('{"datetime": "2018-01-31T06:17:45.547"}', res)
 
-    def test_datetime_to_str(self):
+    def test_str_to_datetime(self):
       # Test the json datetime encoder
-      res = Parser(str, datetime(2018, 1, 31, 6, 17, 45, 547000))
-      self.assertEqual("2018-01-31T06:17:45.547", res)
+      tmp = datetime(2018, 1, 31, 6, 17, 45, 547000)
+      res = Parser(tmp, "2018-01-31T06:17:45.547")
+      self.assertEqual(res, tmp)
+
+    def test_datetime_time_to_str(self):
+      # Test the json datetime encoder
+      res = Parser(str, time(6,17, 45, 547000))
+      self.assertEqual('06:17:45.547', res)
 
     def test_str_to_datetime(self):
       # Test the json datetime encoder
@@ -223,15 +264,23 @@ class TestUtils(unittest.TestCase):
       pt = Template(convert_multiply)
       self.assertEqual(10, pt.run('1'))
 
+    def test_none_to_int_float(self):
+      # Executes the function passed in rather than using builtin
+      float_t = Parser(1.0, None)
+      int_t = Parser(1, None)
+      self.assertEqual(float_t, 0.0)
+      self.assertEqual(int_t, 0)
+
+
     '''
     Fancier nesting cases
     '''
 
     def test_flat_array(self):
-      tmp = [659.100000, '0.66075377', 1517364874.3597, 's', 'l', '']
-      test = ['659.100000', '', 1, 1]
+      tmp = [659.100000, 0, '1.0', 1, 's', 'l', '']
+      test = ['659.100000', '', 1.0, '1.0']
       res = Parser(tmp, test)
-      self.assertEqual(res, [659.100000, 0.0, 1.0, 1.0])
+      self.assertEqual(res, [659.100000, 0, '1.0', 1])
 
     def test_deep_array(self):
       tmp = [{ 'deep_bool': True, 'deep_float': 1.0 }]
@@ -241,6 +290,12 @@ class TestUtils(unittest.TestCase):
       self.assertEqual(res[0]['deep_float'], 1.0)
       self.assertEqual(len(res), 1)
       self.assertEqual(len(res[0].keys()), 2)
+
+    def test_deep_dict(self):
+      tmp = {'a': {'b':3.0}}
+      test = {'a': {'b': '3'}}
+      res = Parser(tmp, test)
+      self.assertEqual(res['a']['b'], 3.0)
 
     def test_nested_parser_template(self):
       TickerModel = Template({
