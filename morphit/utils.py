@@ -4,7 +4,7 @@ General purpose utility library..
 
 import re, string, json, iso8601
 from types import LambdaType, FunctionType
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timezone
 import time as pytime
 from multipledispatch import dispatch
 
@@ -12,57 +12,96 @@ from multipledispatch import dispatch
 class JSONEncoder(json.JSONEncoder):
     """JSONEncoder subclass that knows how to encode date/time, decimal types, and UUIDs."""
 
+    # This function is called when the base serializer doesn't know wtd with type
     def default(self, o):
         # See "Date Time String Format" in the ECMA-262 specification.
         if (type(o) in [datetime, time, date]):
           return Parser(str, o)
-        return super(JSONEncoder, self).default(o)
+        elif(callable(o) and o.__code__.co_argcount==0):
+          return o()
+        else:
+          return None
 
-pattern = re.compile('[\W_]+')
-DateType = datetime.now()
-NoneType = type(None)
-
-class StaticDateType(object):
-  def __init__(self):
-    pass
-
-class Template(object):
-  types = {
-    'Date': DateType,
-    'StaticDateType': StaticDateType,
-  }
-
-  def __init__(self, template=None, strict=False):
-    self.template = template
-    self.strict = strict
-
-  @staticmethod
-  def parse(template, data):
-    return Parser(template, data)
-
-  def run(self, data):
-    return Parser(self.template, data)
+Types = {
+  'Date': datetime.now(),
+  'DateType': date,
+  'DateTime': datetime,
+  'Time': time,
+  'NoneType': type(None),
+  'Lambda': LambdaType,
+  'Function': FunctionType,
+}
 
 # Returns a function that parses to a given type (base)
-def Processor(base):
-  return lambda var: Parser(base, var)
+class Processor():
+  def __init__(self, startBase):
+    self.templates = []
+    self.then(startBase)
+
+  def __call__(self, var, fallback=None):
+    # Allow the original fallback in a pipe to be passed to parser
+    # Used for chained functions with reference to original values
+    curry = var if fallback is None else fallback
+    partial=var
+    for base in self.templates:
+      partial = Parser(base, partial, curry)
+    return partial
+
+  @property
+  def __code__(self):
+    return self.__call__.__code__
+
+  @staticmethod
+  def flow(templates):
+    r = Processor(templates[0])
+    if(len(templates)==1): return r
+    for p in templates[1:]:
+      r.then(Processor(p))
+    return r
+
+  def then(self, base):
+    self.templates.append(base)
+    return self
+
+# Wrapper for fallback defaulting
+@dispatch(object, object)
+def Parser(base, var):
+  return Parser(base, var, None)
 
 # OUTPUT: fallback to the type of input
-@dispatch(object, object)
-def Parser(base, var, fallback=None):
+@dispatch(object, object, object)
+def Parser(base, var, fallback):
+  if type(base) == type(var):
+    return var
   if(base is None):
     return var
   if(var is None):
-    var=0
-  if type(base) == type(var):
-    return var
-  if (not fallback is None):
-    return Parser(fallback, var)
+    return fallback() if callable(fallback) else fallback
   return type(base)(var)
 
+# datetime -> timestamp
+@dispatch(int, Types['DateTime'], object)
+def Parser(base, var, fallback):
+  return int(var.timestamp()*1000)
+
+# datetime -> float
+@dispatch(float, Types['DateTime'], object)
+def Parser(base, var, fallback):
+  return pytime.mktime(var.timetuple()) + var.microsecond / 1E6
+
+# float -> datetime
+@dispatch(Types['DateTime'], float, object)
+def Parser(base, var, fallback):
+  return datetime.fromtimestamp(var)
+
+# datetime.date -> str (iso format)
+@dispatch(str, Types['DateType'], object)
+def Parser(base, var, fallback):
+  return var.isoformat()
+
 # datetime -> str
-@dispatch(str, datetime)
-def Parser(base, var, fallback=None):
+@dispatch(str, Types['DateTime'], object)
+def Parser(base, var, fallback):
   r = var.isoformat()
   if var.microsecond:
       r = r[:23] + r[26:]
@@ -70,109 +109,86 @@ def Parser(base, var, fallback=None):
       r = r[:-6] + 'Z'
   return r
 
-# datetime -> timestamp
-@dispatch(int, datetime)
-def Parser(base, var, fallback=None):
-  return int(var.timestamp()*1000)
-
-# datetime -> float
-@dispatch(float, datetime)
-def Parser(base, var, fallback=None):
-  return pytime.mktime(var.timetuple()) + var.microsecond / 1E6
-
-# float -> datetime
-@dispatch(datetime, float)
-def Parser(base, var, fallback=None):
-  return datetime.fromtimestamp(var)
-
-# datetime.date -> str (iso format)
-@dispatch(str, date)
-def Parser(base, var, fallback=None):
-  return var.isoformat()
-
 # datetime.time -> string
-@dispatch(str, time)
-def Parser(base, var, fallback=None):
+@dispatch(str, Types['Time'], object)
+def Parser(base, var, fallback):
+  # TODO: test error
   if var.utcoffset() is not None:
       raise ValueError("JSON can't represent timezone-aware times.")
+
   r = var.isoformat()
   if var.microsecond:
       r = r[:12]
   return r
 
-# any -> Template
-@dispatch(Template, object)
-def Parser(base, var, fallback=None):
-  return base.run(var)
+# any -> func(any)
+@dispatch((Types['Function'], Types['Lambda']), object, object)
+def Parser(base, var, fallback):
+  if(base.__code__.co_argcount==1):
+    return base(var)
+  return base(var, fallback)
 
 # any -> func(any)
-@dispatch((FunctionType, LambdaType), object)
-def Parser(base, var, fallback=None):
-  return base(var)
+@dispatch(Processor, object, object)
+def Parser(base, var, fallback):
+  return base(var, fallback)
 
-# TODO: THIS IS BAD
-
-# str -> iso8601
-@dispatch((type(DateType), StaticDateType), str)
-def Parser(base, var, fallback=None):
+@dispatch(Types['DateTime'], str, object)
+def Parser(base, var, fallback):
   tmp=var.split('.')
-  if(var.isdigit() or (len(tmp)==2 and tmp[0].isdigit() and tmp[1].isdigit())):
-    return Parser(base, float(var))
+  if(len(tmp)==2 and tmp[0].isdigit() and tmp[1].isdigit()):
+    return Parser(base, float(var), fallback)
+  elif(var.isdigit()):
+    return Parser(base, int(var), fallback)
   return iso8601.parse_date(var)
 
 # str -> datetime.date
-@dispatch(datetime, str)
-def Parser(base, var, fallback=None):
-  tmp=var.split('.')
-  if('-' in var):
-    return iso8601.parse_date(var)
-  elif(len(tmp)==2 and tmp[0].isdigit() and tmp[1].isdigit()):
-    return Parser(base, float(var))
-  elif(var.isdigit()):
-    return Parser(base, int(var))
-  return iso8601.parse_date(var)
+@dispatch(Types['DateType'], str, object)
+def Parser(base, var, fallback):
+  return Parser(Types['Date'], var, fallback).date()
 
 # int,float -> datetime.date
-@dispatch((type(DateType), StaticDateType), (int, float))
-def Parser(base, var, fallback=None):
+@dispatch(Types['DateType'], (int, float), object)
+def Parser(base, var, fallback):
   if(var > 150000000000): # Check if ms timestamp
     return datetime.fromtimestamp(var / 1e3)
   return datetime.fromtimestamp(var)
 
-# primitive -> array
-@dispatch((list, tuple), (float, int, str))
-def Parser(base, var, fallback=None):
-  return type(base)([var])
-
 # any -> type(any)
-@dispatch(type(str), (object))
-def Parser(base, var, fallback=None):
-  return Parser(base(), var)
+@dispatch(type(str), (object), object)
+def Parser(base, var, fallback):
+  return Parser(base(), var, fallback)
 
 # OUTPUT: json
 # dict, array -> str(json)
-@dispatch((str), (dict, list, tuple))
-def Parser(base, var, fallback=None):
+@dispatch((str), (dict, list, tuple), object)
+def Parser(base, var, fallback):
   return json.dumps(var, cls=JSONEncoder)
+
+# primitive -> array
+@dispatch((list, tuple), (float, int, str), object)
+def Parser(base, var, fallback):
+  return Parser(base, [var], fallback)
 
 # OUTPUT: list or tuple
 # any -> array
-@dispatch((list, tuple), (list, tuple, object))
-def Parser(base, var, fallback=None):
+@dispatch((list, tuple), (list, tuple, object), object)
+def Parser(base, var, fallback):
+
     if(len(base)>1): # CASE: cast each
         res = []
         m = min(len(base),len(var))
-        res = [Parser(base[i], var[i]) for i in range(m)]
+        res = [Parser(base[i], var[i], fallback) for i in range(m)]
         res = res + list(var[m:])
         return type(base)(res)
     elif(len(base)==1): # CASE: single type casting
-        return type(base)([Parser(base[0], e) for e in var])
+        return type(base)([Parser(base[0], e, fallback) for e in var])
     return type(base)([e for e in var])
 
 # OUTPUT: list recursively parses json if well formatted
 # str -> list
-@dispatch(list, str)
-def Parser(base, var, fallback=None):
+@dispatch(list, str, object)
+def Parser(base, var, fallback):
   if("u'" in var or not '"' in var):
     var = var.replace("u'", '"').replace("'", '"')
   # Guess if str is well formatted
@@ -181,28 +197,27 @@ def Parser(base, var, fallback=None):
   else:
     tmp = [var]
   if(len(base)>0):
-    return [Parser(base[0], var_elem) for var_elem in tmp]
+    return [Parser(base[0], var_elem, fallback) for var_elem in tmp]
   return tmp
 
 # OUTPUT: boolean
 # str -> bool
-@dispatch(bool, str)
-def Parser(base, var, fallback=None):
+@dispatch(bool, str, object)
+def Parser(base, var, fallback):
   return var =='True' or var =='1' or var =='t' or var =='1.0'
 
 # OUTPUT: string
 # null -> str
-@dispatch(str, NoneType)
-def Parser(base, var, fallback=None):
+@dispatch(str, Types['NoneType'], object)
+def Parser(base, var, fallback):
   return 'None'
 
 # OUTPUT: boolean
 # null -> float
-@dispatch((float, int), NoneType)
-def Parser(base, var, fallback=None):
+@dispatch((float, int), Types['NoneType'], object)
+def Parser(base, var, fallback):
   return type(base)(0)
 
-#
 '''
 OUTPUT: number
 NOTE: type(base)(float(var))
@@ -216,8 +231,8 @@ Traceback (most recent call last):
 ValueError: invalid literal for int() with base 10: '150.0'
 '''
 # str -> float
-@dispatch((float, int), str)
-def Parser(base, var, fallback=None):
+@dispatch((float, int), str, object)
+def Parser(base, var, fallback):
   var = var.replace(' ','')
   try:
     if(var == ''): var = '0'
@@ -225,23 +240,22 @@ def Parser(base, var, fallback=None):
     if(var.count('.')>1):var = var.replace('.','')
     return type(base)(float(var))
   except Exception as e:
-    print(base, var, type(base))
-    raise e
+    raise ValueError("Unable to cast %s -> %s"%(var, type(base)))
 
 # OUTPUT: dict recursively. AKA: nested type formatting
 # dict -> dict
-@dispatch(dict, dict)
-def Parser(base, var, fallback=None):
+@dispatch(dict, dict, object)
+def Parser(base, var, fallback):
   for k in base.keys():
     if(k in var):
       if(var[k]=='N/A'):var[k]=0.0
       if(base[k]=='N/A'):base[k]=0.0
-      var[k] = Parser(base[k], var[k])
+      var[k] = Parser(base[k], var[k], fallback)
   return var
 
 # OUTPUT: dict from json string
 # str -> dict
-@dispatch(dict, str)
-def Parser(base, var, fallback=None):
+@dispatch(dict, str, object)
+def Parser(base, var, fallback):
   temp = json.loads(var.replace("u'", '"').replace("'", '"'))
-  return Parser(base, temp)
+  return Parser(base, temp, fallback)

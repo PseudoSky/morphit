@@ -33,12 +33,27 @@ If you find yourself saying any of the following, you may to be entitled to fina
 Features
 ------------
 
--   datetime serialization
+-   Processor chaining
+
 ```python
-  	>>> from datetime import date
-    >>> Parser(str, datetime(2018, 1, 31, 6, 17, 45, 547000))
-    "2018-01-31T06:17:45.547"
+>>> Processor.flow(["<parser|lambda|func|obj>",...])
+
+>>> p = Processor(dict)
+>>> p.then(lambda d: d['date'])
+     .then(Processor.types['Date'])
+>>> res = p('{"date": "2018-01-31T06:17:45.547"}')
+
+datetime(2018, 1, 31, 6, 17, 45, 547000)
 ```
+
+-   datetime serialization
+
+```python
+>>> from datetime import date
+>>> Parser(str, datetime(2018, 1, 31, 6, 17, 45, 547000))
+"2018-01-31T06:17:45.547"
+```
+
 -   deep serialization of dicts
 -   supports custom serializers using methods/lambda functions
 -   templated parsers
@@ -114,11 +129,11 @@ Installation
 Deploy
 ------------
 
-
-Build: `python3 setup.py build`
-Test `python setup.py test`
-Install: `python3 setup.py install`
-
+```sh
+python3 setup.py build       #Build:
+python setup.py coverage         #Test
+python3 setup.py install     #Install:
+```
 
 Deploy
 ------------
@@ -128,8 +143,9 @@ Deploy
 * Check venv is active
 
 
-```
-python3 setup.py sdist bdist_wheel
+```sh
+echo "__version__=1.x.y" > ./morphit/version.py # where x and y are the next version
+python3 setup.py coverage && python3 setup.py sdist bdist_wheel
 twine upload dist/*
 ```
 
@@ -150,14 +166,22 @@ Roadmap
 - Add default parameter that remplaces None or non existing values with a specified default
 - Add fallback parameter that accepts a value or a lambda function to replace the value
 
+
+CHANGELOG
+------------
+## 1.1.0
+Breaking changes: removed `Template` class, types are now attached to `Processor`
+
+- FIX: 100% test coverage, all dead code eliminated
+- FIX: primitive to iterable casting
+- FEATURE: Removed & Replaced `Template` with `Processor` callable class
+- FEATURE: Added processor chaining `then` `flow`
+- FEATURE: Added lambda Processor original data & result parameters
+
+
 BUGS
 -----------
 
-Should output float
-```python
-    >>> Parser({'asdf':[1.0]}, {'asdf':1000})
-    {'asdf': [1000]}
-```
 
 
 Contributing

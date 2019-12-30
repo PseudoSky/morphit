@@ -1,4 +1,5 @@
 from .utils import Parser
 from .utils import Processor
-from .utils import Template
-__version__ = '1.0.4'
+from .utils import JSONEncoder
+from .utils import Types
+from .version import __version__
