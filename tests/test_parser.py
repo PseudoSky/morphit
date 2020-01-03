@@ -1,6 +1,6 @@
 import unittest
 import json
-from morphit import Processor, Parser, JSONEncoder
+from morphit import Processor, Parser, JSONEncoder, Instances
 from datetime import datetime, timezone, time, timezone, date
 
 class TestParser(unittest.TestCase):
@@ -19,6 +19,7 @@ class TestParser(unittest.TestCase):
       int_t = Parser(1, None)
       self.assertEqual(float_t, 0.0)
       self.assertEqual(int_t, 0)
+      self.assertEqual(Instances['datetime'],datetime(2019, 12, 6, 20, 31, 59, 329921))
 
     def test_case_float_string_to_int(self):
         res = Parser(60, '150.0')

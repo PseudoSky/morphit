@@ -3,7 +3,7 @@ morphit tests.
 """
 
 import unittest
-from morphit import Parser, Processor, Types
+from morphit import Parser, Processor, Types, Instances
 from datetime import datetime, timezone, time
 
 class TestUtils(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestUtils(unittest.TestCase):
     def test_none(self):
       pt = Processor({
         'amount': 0.66075377,
-        'datetime': Types['Date'],
+        'datetime': Instances['datetime'],
         'fee': None,
         'id': None,
         'price': 10000.0,
@@ -47,7 +47,7 @@ class TestUtils(unittest.TestCase):
 
     def test_string_float_ts(self):
       # Parse ms timestamp format (like from python)
-      pt = Processor(Types['Date'])
+      pt = Processor(Instances['datetime'])
       tmp ='1517408042.277897'
       self.assertEqual(datetime(2018, 1, 31, 6, 14, 2, 277897), pt(tmp))
       tmp ='1517408042'
@@ -55,7 +55,7 @@ class TestUtils(unittest.TestCase):
 
     def test_s_ts(self):
       # Parse ms timestamp format (like from python)
-      pt = Processor(Types['Date'])
+      pt = Processor(Instances['datetime'])
       tmp = 1517408042.277897
       self.assertEqual(datetime(2018, 1, 31, 6, 14, 2, 277897), pt(tmp))
       tmp = 1517408042
@@ -65,20 +65,20 @@ class TestUtils(unittest.TestCase):
 
     def test_string_ms_ts(self):
       # Parse s timestamp format (like from python)
-      pt = Processor(Types['Date'])
+      pt = Processor(Instances['datetime'])
       tmp ='1517408265547'
       self.assertEqual(datetime(2018, 1, 31, 6, 17, 45, 547000), pt(tmp))
 
 
     def test_ms_ts(self):
       # Parse s timestamp format (like from python)
-      pt = Processor(Types['Date'])
+      pt = Processor(Instances['datetime'])
       tmp = 1517408265547
       self.assertEqual(datetime(2018, 1, 31, 6, 17, 45, 547000), pt(tmp))
 
     def test_json_dump_datetime(self):
       # Test the json datetime encoder
-      pt = Processor(Types['Date'])
+      pt = Processor(Instances['datetime'])
       tmp = pt(1517408265547)
       self.assertEqual(datetime(2018, 1, 31, 6, 17, 45, 547000), tmp)
       res = Parser('', {'datetime': tmp})
@@ -116,7 +116,7 @@ class TestUtils(unittest.TestCase):
     def test_nested_parser_template(self):
       TickerModel = Processor({
         'amount': 0.66075377,
-        'datetime': Types['Date'],
+        'datetime': Instances['datetime'],
         'fee': None,
         'id': None,
         'info': ['659.100000', '0.66075377', 1517364874.3597, 's', 'l', ''],

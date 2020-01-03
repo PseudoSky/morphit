@@ -169,6 +169,11 @@ Roadmap
 
 CHANGELOG
 ------------
+## 1.2.0
+Added custom aggregators for processors to allow result merging without needing to update the chained partial object.
+- FIX: Coverage was broken due to the import of version in setup.py
+- FEATURE: Custom aggregators for Processor class
+
 ## 1.1.0
 Breaking changes: removed `Template` class, types are now attached to `Processor`
 

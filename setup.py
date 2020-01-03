@@ -1,7 +1,6 @@
 """
 Setup script.
 """
-from morphit.version import __version__
 from distutils.core import Command
 from setuptools import setup
 
@@ -79,5 +78,5 @@ setup(
         'virtualenv>=15.0.1,<16.0.0'
     ],
     url='https://github.com/PseudoSky/morphit',
-    version=__version__
+    version='1.2.0',
 )

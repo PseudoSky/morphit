@@ -8,6 +8,33 @@ from datetime import datetime, date, time, timezone
 import time as pytime
 from multipledispatch import dispatch
 
+def getLast(results): return results[-1]
+def getRest(results): return results[1:]
+def getMergedDicts(results): return dict(i for r in results[1:] for i in r.items())
+
+Aggregators = {
+  'map': getRest,
+  'reduce': getLast,
+  'merge': getMergedDicts,
+}
+
+Instances = {
+  'datetime': datetime(2019, 12, 6, 20, 31, 59, 329921),
+  'time': time(6,17, 45, 547000),
+  'date': date(2018, 1, 31),
+  'none': None,
+  'lambda': lambda x: x,
+  'function': print,
+}
+
+Types = {
+  'date':     type(Instances['date']),
+  'datetime': type(Instances['datetime']),
+  'time':     type(Instances['time']),
+  'none':     type(None),
+  'lambda':   LambdaType,
+  'function': FunctionType,
+}
 
 class JSONEncoder(json.JSONEncoder):
     """JSONEncoder subclass that knows how to encode date/time, decimal types, and UUIDs."""
@@ -22,38 +49,38 @@ class JSONEncoder(json.JSONEncoder):
         else:
           return None
 
-Types = {
-  'Date': datetime.now(),
-  'DateType': date,
-  'DateTime': datetime,
-  'Time': time,
-  'NoneType': type(None),
-  'Lambda': LambdaType,
-  'Function': FunctionType,
-}
 
 # Returns a function that parses to a given type (base)
 class Processor():
-  def __init__(self, startBase):
+  def __init__(self, startBase, aggregator='reduce'):
+    # aggregator=='merge' requires an object to be resolved
+    if(aggregator in Aggregators):
+      self.aggregator = Aggregators[aggregator]
+    else:
+      self.aggregator = Processor(aggregator)
     self.templates = []
     self.then(startBase)
 
-  def __call__(self, var, fallback=None):
+
+
+  def __call__(self, var, fallback=None, output_default={}):
     # Allow the original fallback in a pipe to be passed to parser
     # Used for chained functions with reference to original values
     curry = var if fallback is None else fallback
-    partial=var
+    results = [var]
     for base in self.templates:
-      partial = Parser(base, partial, curry)
-    return partial
+      results.append(Parser(base, results[-1], curry))
+    output = self.aggregator(results)
+    return output
+
 
   @property
   def __code__(self):
     return self.__call__.__code__
 
   @staticmethod
-  def flow(templates):
-    r = Processor(templates[0])
+  def flow(templates, aggregator='reduce'):
+    r = Processor(templates[0], aggregator=aggregator)
     if(len(templates)==1): return r
     for p in templates[1:]:
       r.then(Processor(p))
@@ -80,27 +107,27 @@ def Parser(base, var, fallback):
   return type(base)(var)
 
 # datetime -> timestamp
-@dispatch(int, Types['DateTime'], object)
+@dispatch(int, Types['datetime'], object)
 def Parser(base, var, fallback):
   return int(var.timestamp()*1000)
 
 # datetime -> float
-@dispatch(float, Types['DateTime'], object)
+@dispatch(float, Types['datetime'], object)
 def Parser(base, var, fallback):
   return pytime.mktime(var.timetuple()) + var.microsecond / 1E6
 
 # float -> datetime
-@dispatch(Types['DateTime'], float, object)
+@dispatch(Types['datetime'], float, object)
 def Parser(base, var, fallback):
   return datetime.fromtimestamp(var)
 
 # datetime.date -> str (iso format)
-@dispatch(str, Types['DateType'], object)
+@dispatch(str, Types['date'], object)
 def Parser(base, var, fallback):
   return var.isoformat()
 
 # datetime -> str
-@dispatch(str, Types['DateTime'], object)
+@dispatch(str, Types['datetime'], object)
 def Parser(base, var, fallback):
   r = var.isoformat()
   if var.microsecond:
@@ -110,7 +137,7 @@ def Parser(base, var, fallback):
   return r
 
 # datetime.time -> string
-@dispatch(str, Types['Time'], object)
+@dispatch(str, Types['time'], object)
 def Parser(base, var, fallback):
   # TODO: test error
   if var.utcoffset() is not None:
@@ -122,7 +149,7 @@ def Parser(base, var, fallback):
   return r
 
 # any -> func(any)
-@dispatch((Types['Function'], Types['Lambda']), object, object)
+@dispatch((Types['function'], Types['lambda']), object, object)
 def Parser(base, var, fallback):
   if(base.__code__.co_argcount==1):
     return base(var)
@@ -133,7 +160,7 @@ def Parser(base, var, fallback):
 def Parser(base, var, fallback):
   return base(var, fallback)
 
-@dispatch(Types['DateTime'], str, object)
+@dispatch(Types['datetime'], str, object)
 def Parser(base, var, fallback):
   tmp=var.split('.')
   if(len(tmp)==2 and tmp[0].isdigit() and tmp[1].isdigit()):
@@ -143,12 +170,12 @@ def Parser(base, var, fallback):
   return iso8601.parse_date(var)
 
 # str -> datetime.date
-@dispatch(Types['DateType'], str, object)
+@dispatch(Types['date'], str, object)
 def Parser(base, var, fallback):
-  return Parser(Types['Date'], var, fallback).date()
+  return Parser(Instances['datetime'], var, fallback).date()
 
 # int,float -> datetime.date
-@dispatch(Types['DateType'], (int, float), object)
+@dispatch(Types['date'], (int, float), object)
 def Parser(base, var, fallback):
   if(var > 150000000000): # Check if ms timestamp
     return datetime.fromtimestamp(var / 1e3)
@@ -208,13 +235,13 @@ def Parser(base, var, fallback):
 
 # OUTPUT: string
 # null -> str
-@dispatch(str, Types['NoneType'], object)
+@dispatch(str, Types['none'], object)
 def Parser(base, var, fallback):
   return 'None'
 
 # OUTPUT: boolean
 # null -> float
-@dispatch((float, int), Types['NoneType'], object)
+@dispatch((float, int), Types['none'], object)
 def Parser(base, var, fallback):
   return type(base)(0)
 
