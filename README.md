@@ -130,9 +130,10 @@ Deploy
 ------------
 
 ```sh
-python3 setup.py build       #Build:
-python setup.py coverage         #Test
-python3 setup.py install     #Install:
+python3 setup.py build             #Build:
+python setup.py coverage           #Test
+python3 setup.py install           #Install:
+rm -rf build morphit.egg-info dist #Cleanup
 ```
 
 Deploy
@@ -145,7 +146,8 @@ Deploy
 
 ```sh
 echo "__version__=1.x.y" > ./morphit/version.py # where x and y are the next version
-python3 setup.py coverage && python3 setup.py sdist bdist_wheel
+python3 setup.py coverage
+python3 setup.py sdist bdist_wheel
 twine upload dist/*
 ```
 
