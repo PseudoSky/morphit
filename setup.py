@@ -73,7 +73,7 @@ setup(
     tests_require=[
         'codecov>=2.0.3,<3.0.0',
         'coverage>=4.0.3,<5.0.0',
-        'Sphinx>=1.4.1,<2.0.0',
+        'Sphinx>=4.5.0,<4.6.0',
         'tox>=2.3.1,<3.0.0',
         'virtualenv>=15.0.1,<16.0.0'
     ],
