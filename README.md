@@ -14,20 +14,17 @@ Usage
 `sudo -H pip install morphit`
 
 
-morphit is a no nonsense parser that takes a template for data and converts
-whatever you feed it into whatever you want it to be.
+morphit is a no nonsense parser that takes any input and converts it to the correct type based on a provided template
+IE: Parse bad data from whatever you feed in - into whatever you want it to be
 
-Do you have "My data is fucked"?
-If you find yourself saying any of the following, you may to be entitled to financial compensation.
-
--   WTF half of these are strings instead of **insert type here**
--   How do I even convert from **insert type A** to **insert type B**
+Example developer experiences
+-   Half of these values are **_strings_** instead of ______ **_correct_type_** _____
+-   How do I convert from ___ **_incorrect_type_** ___ to ______ **_correct_type_** _____
 -   I have so much bad data I'm going to have to manually fix
 -   I have hundreds of if conditions to fix weird data
--   How the hell am I supposed to fix the type of all these nested objects
--   You're telling me this float is supposed to be a date?...
--   You're telling me that I cant put a datetime object anywhere?
--   I don't know how any of these strings became numbers but...
+-   How can I fix types within a set of deeply nested objects?
+-   This float is supposed to be a date?...
+-   You're telling me that I can't persist an object with a property of type datetime?
 
 
 Features
@@ -36,6 +33,8 @@ Features
 -   Processor chaining
 
 ```python
+>>> from morphit import Processor
+
 >>> Processor.flow(["<parser|lambda|func|obj>",...])
 
 >>> p = Processor(dict)
